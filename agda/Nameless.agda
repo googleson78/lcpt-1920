@@ -27,6 +27,11 @@ NamelessEq (x ap x₁) (lam y) = Zero
 NamelessEq (lam x) (v x₁) = Zero
 NamelessEq (lam x) (y ap y₁) = Zero
 
+NamelessEq-refl : {n : Nat} (x : Nameless n) -> NamelessEq x x
+NamelessEq-refl (v (_ , _)) = refl
+NamelessEq-refl (x ap y) = NamelessEq-refl x , NamelessEq-refl y
+NamelessEq-refl (lam x) = NamelessEq-refl x
+
 -- task 2.9
 promoNameless : {n m : Nat} -> n <= m -> (x : Nameless n) -> Nameless m >< \y -> NamelessEq x y
 promoNameless n<=m (v (x , x<n)) = v (x , <-<=-trans x<n n<=m) , refl
