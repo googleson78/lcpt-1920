@@ -12,6 +12,24 @@ data Nat : Set where
   zero : Nat
   suc : Nat -> Nat
 
+_+N_ : Nat -> Nat -> Nat
+zero +N m = m
+suc n +N m = suc (n +N m)
+
+infixl 40 _+N_
+
++N-right-zero : (n : Nat) -> n == n +N zero
++N-right-zero zero = refl
++N-right-zero (suc n) = ap suc (+N-right-zero n)
+
++N-right-suc : (n m : Nat) -> suc (n +N m) == n +N suc m
++N-right-suc zero m = refl
++N-right-suc (suc n) m = ap suc (+N-right-suc n m)
+
++N-commut : (n m : Nat) -> n +N m == m +N n
++N-commut zero m = +N-right-zero m
++N-commut (suc n) m rewrite +N-commut n m | +N-right-suc m n = refl
+
 suc-inj : {n m : Nat} -> suc n == suc m -> n == m
 suc-inj refl = refl
 
@@ -28,6 +46,25 @@ infix 30 _<=_
 
 _<_ : Nat -> Nat -> Set
 n < m = n <= m * (n == m -> Zero)
+
++N-monotone-<=-r : (n k : Nat) -> n <= n +N k
++N-monotone-<=-r zero k = ozero
++N-monotone-<=-r (suc n) k = osuc (+N-monotone-<=-r n k)
+
++N-monotone-<=-l : (n k : Nat) -> n <= k +N n
++N-monotone-<=-l n k rewrite +N-commut k n = +N-monotone-<=-r n k
+
++N-monotone2-<=-l : (n m k : Nat) -> n <= m -> k +N n <= k +N m
++N-monotone2-<=-l n m zero n<=m = n<=m
++N-monotone2-<=-l n m (suc k) n<=m = osuc (+N-monotone2-<=-l n m k n<=m)
+
++N-inj : (n m k : Nat) -> k +N n == k +N m -> n == m
++N-inj n m zero k+n==k+m = k+n==k+m
++N-inj n m (suc k) k+n==k+m rewrite +N-inj n m k (suc-inj k+n==k+m) = refl
+
++N-monotone2-<-l : (n m k : Nat) -> n < m -> k +N n < k +N m
++N-monotone2-<-l n m k ( n<=m , n/=m ) with +N-monotone2-<=-l n m k n<=m
+... | z = z , \{ x -> n/=m (+N-inj n m k x)}
 
 <-osuc : {n m : Nat} -> n < m -> suc n < suc m
 <-osuc (n<=m , n/=m) = osuc n<=m , \ sucn==sucm -> n/=m (suc-inj sucn==sucm)
