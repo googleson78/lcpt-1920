@@ -66,6 +66,28 @@ n < m = n <= m * (n == m -> Zero)
 +N-monotone2-<-l n m k ( n<=m , n/=m ) with +N-monotone2-<=-l n m k n<=m
 ... | z = z , \{ x -> n/=m (+N-inj n m k x)}
 
+dec<= : (n m : Nat) -> Dec (n <= m)
+dec<= zero m = inr ozero
+dec<= (suc n) zero = inl (\ ())
+dec<= (suc n) (suc m) with dec<= n m
+dec<= (suc n) (suc m) | inl no = inl \{ (osuc n<=m) -> no n<=m}
+dec<= (suc n) (suc m) | inr yes = inr (osuc yes)
+
+dec== : (n m : Nat) -> Dec (n == m)
+dec== zero zero = inr refl
+dec== zero (suc m) = inl (\ ())
+dec== (suc n) zero = inl (\ ())
+dec== (suc n) (suc m) with dec== n m
+dec== (suc n) (suc m) | inl no = inl \{ refl -> no refl}
+dec== (suc n) (suc m) | inr yes = inr (ap suc yes)
+
+dec< : (n m : Nat) -> Dec (n < m)
+dec< n m with dec== n m
+dec< n .n | inr refl = inl (\ x -> snd x refl)
+dec< n m | inl notEq with dec<= n m
+dec< n m | inl notEq | inl notLeq = inl (\ x -> notLeq (fst x))
+dec< n m | inl notEq | inr yesLeq = inr (yesLeq , notEq)
+
 <-osuc : {n m : Nat} -> n < m -> suc n < suc m
 <-osuc (n<=m , n/=m) = osuc n<=m , \ sucn==sucm -> n/=m (suc-inj sucn==sucm)
 
