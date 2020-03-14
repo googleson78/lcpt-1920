@@ -28,12 +28,12 @@ NamelessEq (lam x) (v x₁) = Zero
 NamelessEq (lam x) (y ap y₁) = Zero
 
 -- task 2.9
-promoNameless : {n m : Nat} -> n < m -> (x : Nameless n) -> Nameless m >< \y -> NamelessEq x y
-promoNameless n<m (v (x , x<n)) = (v (x , <-trans x<n n<m)) , refl
-promoNameless n<m (x ap y) with promoNameless n<m x | promoNameless n<m y
-promoNameless n<m (x ap y) | x' , eqxx' | y' , eqyy' = (_ap_ x' y') , eqxx' , eqyy'
-promoNameless n<m (lam x) with promoNameless (<-suc n<m) x
-promoNameless n<m (lam x) | x' , eqxx' = lam x' , eqxx'
+promoNameless : {n m : Nat} -> n <= m -> (x : Nameless n) -> Nameless m >< \y -> NamelessEq x y
+promoNameless n<=m (v (x , x<n)) = v (x , <-<=-trans x<n n<=m) , refl
+promoNameless n<=m (x ap y) with promoNameless n<=m x | promoNameless n<=m y
+promoNameless n<=m (x ap y) | x' , eqxx' | y' , eqyy' = (_ap_ x' y') , eqxx' , eqyy'
+promoNameless n<=m (lam x) with promoNameless (osuc n<=m) x
+promoNameless n<=m (lam x) | x' , eqxx' = lam x' , eqxx'
 
 namelessStrictSubset : {n m : Nat} -> n < m -> Nameless m >< \x -> (y : Nameless n) -> NamelessEq x y -> Zero
 namelessStrictSubset {n} {zero} n<m = naughtE (<-zero-impossible n<m)
