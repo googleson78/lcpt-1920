@@ -9,4 +9,4 @@ data _+_ (A B : Set) : Set where
 infixr 10 _+_
 
 Dec : Set -> Set
-Dec P = (Zero -> P) + P
+Dec P = (P -> Zero) + P
