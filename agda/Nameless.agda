@@ -37,9 +37,9 @@ promoNameless n<m (lam x) | x' , eqxx' = lam x' , eqxx'
 
 namelessStrictSubset : {n m : Nat} -> n < m -> Nameless m >< \x -> (y : Nameless n) -> NamelessEq x y -> Zero
 namelessStrictSubset {n} {zero} n<m = naughtE (<-zero-impossible n<m)
-namelessStrictSubset {n} {suc m} n<sucm = v (m , <-osuc) , help
+namelessStrictSubset {n} {suc m} n<sucm = v (m , <-suc) , help
   where
-  help : (y : Nameless n) -> NamelessEq (v (m , <-osuc)) y -> Zero
+  help : (y : Nameless n) -> NamelessEq (v (m , <-suc)) y -> Zero
   help (v (_ , m<n)) refl = naughtE (suc-nothing-between m<n n<sucm)
   help (_ ap _) ()
   help (lam _) ()

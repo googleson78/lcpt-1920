@@ -29,14 +29,14 @@ infix 30 _<=_
 _<_ : Nat -> Nat -> Set
 n < m = n <= m * (n == m -> Zero)
 
-<-suc : {n m : Nat} -> n < m -> suc n < suc m
-<-suc (n<=m , n/=m) = osuc n<=m , \ sucn==sucm -> n/=m (suc-inj sucn==sucm)
+<-osuc : {n m : Nat} -> n < m -> suc n < suc m
+<-osuc (n<=m , n/=m) = osuc n<=m , \ sucn==sucm -> n/=m (suc-inj sucn==sucm)
 
 <=-is-<-or-== : {n m : Nat} -> n <= m -> n < m + n == m
 <=-is-<-or-== {.0} {zero} ozero = inr refl
 <=-is-<-or-== {.0} {suc m} ozero = inl (ozero , (\ ()))
 <=-is-<-or-== (osuc n<=m) with <=-is-<-or-== n<=m
-<=-is-<-or-== (osuc n<=m) | inl n<m = inl (<-suc (n<=m , snd n<m))
+<=-is-<-or-== (osuc n<=m) | inl n<m = inl (<-osuc (n<=m , snd n<m))
 <=-is-<-or-== (osuc n<=m) | inr refl = inr refl
 
 Fin : Nat -> Set
@@ -70,9 +70,9 @@ FinEq (n , _) (m , _) = n == m
   help : {n m k : Nat} -> n == k -> n < m -> m < k -> Zero
   help refl x y = <-asymmetric x y
 
-<-osuc : {n : Nat} -> n < suc n
-<-osuc {zero} = ozero , (\ ())
-<-osuc {suc n} = <-suc <-osuc
+<-suc : {n : Nat} -> n < suc n
+<-suc {zero} = ozero , (\ ())
+<-suc {suc n} = <-osuc <-suc
 
 <-zero-impossible : {n : Nat} -> n < zero -> Zero
 <-zero-impossible (ozero , n/=m) = n/=m refl
@@ -91,4 +91,4 @@ suc-nothing-between (n<=m , n/=m) (m<=sucn , m/=sucn) | inr refl = m/=sucn refl
 
 maxFin : {n m : Nat} -> n < m -> Fin m >< \x -> (y : Fin n) -> fst y == fst x -> Zero
 maxFin {n} {zero} n<m = naughtE (<-zero-impossible n<m)
-maxFin {n} {suc m} n<m = (m , <-osuc) , \{ (y , y<n) refl -> suc-nothing-between y<n n<m}
+maxFin {n} {suc m} n<m = (m , <-suc) , \{ (y , y<n) refl -> suc-nothing-between y<n n<m}
