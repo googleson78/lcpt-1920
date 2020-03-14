@@ -6,6 +6,7 @@ open import Lib.Nat
 open import Lib.Sigma
 open import Lib.Eq
 open import Lib.Zero
+open import Lib.Sum
 
 data Nameless : Nat -> Set where
   v : {n : Nat} -> Fin n -> Nameless n
@@ -48,3 +49,22 @@ namelessStrictSubset {n} {suc m} n<sucm = v (m , <-suc) , help
   help (v (_ , m<n)) refl = naughtE (suc-nothing-between m<n n<sucm)
   help (_ ap _) ()
   help (lam _) ()
+
+-- if we don't insist on the equality then we can skip recursing via NamelessEq-refl here
+restruct : {n m : Nat} -> n == m -> (x : Nameless n) -> Nameless m >< \y -> NamelessEq x y
+restruct refl x = x , NamelessEq-refl x
+
+-- could use ↑⇑
+shiftUp : {n : Nat} (d c : Nat) -> Nameless n -> Nameless (d +N n)
+shiftUp d c (v k) with dec< (fst k) c
+shiftUp {n} d c (v k) | inr k<c = fst (promoNameless (+N-monotone-<=-l n d) (v k))
+shiftUp {n} d c (v (m , m<n)) | inl k>=c = v (d +N m , +N-monotone2-<-l m n d m<n)
+shiftUp d c (x ap y) = _ap_ (shiftUp d c x) (shiftUp d c y)
+shiftUp {n} d c (lam x) = lam (fst (restruct (==-symm (+N-right-suc d n)) (shiftUp d (suc c) x)))
+
+_[_=>_] : {n : Nat} -> Nameless n -> Nat -> Nameless n -> Nameless n
+v (k' , _) [ k => N ] with dec== k k'
+(v (k' , k'<n) [ k => N ]) | inl _ = v (k' , k'<n)
+(v (k' , _) [ k => N ]) | inr _ = N
+(A ap B) [ k => N ] = _ap_ ((A [ k => N ])) (B [ k => N ])
+lam M [ k => N ] = lam (M [ suc k => shiftUp 1 0 N ])
