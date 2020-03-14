@@ -148,6 +148,9 @@ suc-nothing-between (n<=m , n/=m) (m<=sucn , m/=sucn) with <=-between n<=m m<=su
 suc-nothing-between (n<=m , n/=m) (m<=sucn , m/=sucn) | inl refl = n/=m refl
 suc-nothing-between (n<=m , n/=m) (m<=sucn , m/=sucn) | inr refl = m/=sucn refl
 
+<-<=-trans : {n m k : Nat} -> n < m -> m <= k -> n < k
+<-<=-trans (n<=m , n/=m) m<=k = <=-trans n<=m m<=k , \{ refl -> n/=m (<=-antisymmetric n<=m m<=k)}
+
 maxFin : {n m : Nat} -> n < m -> Fin m >< \x -> (y : Fin n) -> fst y == fst x -> Zero
 maxFin {n} {zero} n<m = naughtE (<-zero-impossible n<m)
 maxFin {n} {suc m} n<m = (m , <-suc) , \{ (y , y<n) refl -> suc-nothing-between y<n n<m}
