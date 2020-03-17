@@ -70,3 +70,28 @@ v (k' , _) [ k => N ] with dec== k k'
 (v (k' , _) [ k => N ]) | inr _ = N
 (A app B) [ k => N ] = (A [ k => N ]) app (B [ k => N ])
 lam M [ k => N ] = lam (M [ suc k => shiftUp 1 0 N ])
+
+-- sanity checks
+_ :
+  NamelessEq
+    (lam {1} (v (fin 0)) [ 0 => v (fin 0) ])
+    (lam {1} (v (fin 0)))
+_ = refl
+
+_ :
+  NamelessEq
+    (v (fin 0) app lam {2} (v (fin 0)) [ 0 => v (fin 0) ])
+    (v (fin 0) app lam {2} (v (fin 0)))
+_ = refl , refl
+
+_ :
+  NamelessEq
+    (lam {1} (v (fin 1) app v (fin 0)) [ 0 => v (fin 0) ])
+    (lam {1} (v (fin 1) app v (fin 0)))
+_ = refl , refl
+
+_ :
+  NamelessEq
+    (lam {3} (v (fin 1) app v (fin 0)) [ 0 => v (fin 1) ])
+    (lam {3} (v (fin 2) app v (fin 0)))
+_ = refl , refl
