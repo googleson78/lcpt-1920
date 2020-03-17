@@ -158,3 +158,20 @@ promoFin (osuc n<=m) (x , x<sucn) = (x , <-<=-trans x<sucn (osuc n<=m)) , refl
 maxFin : {n m : Nat} -> n < m -> Fin m >< \x -> (y : Fin n) -> fst y == fst x -> Zero
 maxFin {n} {zero} n<m = naughtE (<-zero-impossible n<m)
 maxFin {n} {suc m} n<m = (m , <-suc) , \{ (y , y<n) refl -> suc-nothing-between y<n n<m}
+
+lt : Nat -> Nat -> Set
+lt zero zero = Zero
+lt zero (suc m) = One
+lt (suc n) zero = Zero
+lt (suc n) (suc m) = lt n m
+
+lt-implies-< : {n m : Nat} -> lt n m -> n < m
+lt-implies-< {zero} {suc m} ltnm = ozero , (\ ())
+lt-implies-< {suc n} {suc m} ltnm = <-osuc (lt-implies-< ltnm)
+
+-- "smart" constructor for Fins
+-- in particular we use the calculated version of <
+-- so that if we have two constants everything can be inferred
+-- TODO: this could possibly be replaced by using tactics
+fin : {m : Nat} (n : Nat) -> {lt n m} -> Fin m
+fin n {n<m} = n , lt-implies-< n<m
