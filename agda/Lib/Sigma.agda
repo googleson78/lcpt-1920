@@ -11,7 +11,7 @@ record _><_ (A : Set) (P : A -> Set) : Set where
 
 open _><_ public
 
-infixr 20 _><_ _*_ _,_
+infixr 15 _><_ _*_ _,_
 
 _*_ : (A B : Set) -> Set
 _*_ A B = A >< \ _ → B
