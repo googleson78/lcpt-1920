@@ -166,6 +166,15 @@ max-returns-larger (suc n) (suc m) =
 ==-implies-<= : {n m : Nat} -> n == m -> n <= m
 ==-implies-<= refl = <=-refl
 
+<-implies-<= : {n m : Nat} -> n < m -> suc n <= m
+<suc-implies-<= : {n m : Nat} -> n < suc m -> n <= m
+
+<-implies-<= {.0} {zero} (ozero , snd1) = naughtE (snd1 refl)
+<-implies-<= {n} {suc m} n<m = osuc (<suc-implies-<= n<m)
+
+<suc-implies-<= {zero} {m} n<sucm = ozero
+<suc-implies-<= {suc n} {m} (osuc n<=m , sucn/=sucm) = <-implies-<= (n<=m , suc-inj-/= sucn/=sucm)
+
 <-trans : {n m k : Nat} -> n < m -> m < k -> n < k
 <-trans (n<=m , n/=m) (m<=k , m/=k) = <=-trans n<=m m<=k , \ n==k -> help n==k (n<=m , n/=m) (m<=k , m/=k)
   where
