@@ -1,6 +1,6 @@
 module Lib.Eq where
 
-data _==_ {A : Set} (x : A) : A -> Set where
+data _==_ {l} {A : Set l} (x : A) : A -> Set where
   refl : x == x
 
 infix 15 _==_
