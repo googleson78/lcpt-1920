@@ -2,11 +2,17 @@
 
 module Nameless where
 
+open import Lib.One
+open import Lib.Two
 open import Lib.Nat
 open import Lib.Sigma
 open import Lib.Eq
 open import Lib.Zero
 open import Lib.Sum
+import Lib.List as List
+open List using (List; []; _,-_; length; index; indexOf; _In_; index-In)
+import Lib.NatSet as S
+open S renaming (_,-_ to _s,-_)
 
 data Nameless (n : Nat) : Set where
   v : Fin n -> Nameless n
@@ -95,3 +101,52 @@ _ :
     (lam {3} (v (fin 1) app v (fin 0)) [ 0 => v (fin 1) ])
     (lam {3} (v (fin 2) app v (fin 0)))
 _ = refl , refl
+
+open import Lambda renaming (_[_=>_] to _n[_=>_])
+
+dom : List Nat -> NatSet
+dom [] = []
+dom (x ,- xs) = x <: dom xs
+
+index-sub-dom : (ctxt : List Nat) -> (x : Fin (length ctxt)) -> [ index ctxt x ] Sub dom ctxt
+index-sub-dom [] (n , n<0) = naughtE (<-zero-impossible n<0)
+index-sub-dom (x ,- ctxt) (zero , n<suclen) = sing-sub-add x (dom ctxt)
+index-sub-dom (x ,- ctxt) (suc n , n<suclen) = Sub-trans (index-sub-dom ctxt (n , <-rev-osuc n<suclen)) (add-Sub x (dom ctxt))
+
+in-has-dom : (n : Nat) (xs : List Nat) -> n In xs -> dom xs Has n
+in-has-dom n (n ,- xs) _In_.here = <:-Has n (dom xs)
+in-has-dom n (y ,- ys) (_In_.there xInxs) = <:-monoL-Has n (dom ys) y (in-has-dom n ys xInxs)
+
+dom-has-in : (n : Nat) (xs : List Nat) -> dom xs Has n -> n In xs
+dom-has-in n (x ,- xs) sub with <:-split-Has n (dom xs) x sub
+... | inl refl = _In_.here
+... | inr domxsHasn = _In_.there (dom-has-in n xs domxsHasn)
+
+sing-sub-dom-in : (ctxt : List Nat) (n : Nat) -> [ n ] Sub dom ctxt -> n In ctxt
+sing-sub-dom-in ctxt n sub = dom-has-in n ctxt (sing-Sub-Has n (dom ctxt) sub)
+
+christen : (ctxt : List Nat) -> Nameless (length ctxt) -> Lambda sizeInf
+christen ctxt (v x) = v (index ctxt x)
+christen ctxt (M app N) = christen ctxt M app christen ctxt N
+christen ctxt (lam M) = lam List.firstNotIn ctxt > christen (List.firstNotIn ctxt ,- ctxt) M
+
+christen-freeVars : (ctxt : List Nat) -> (M : Nameless (length ctxt)) -> freeVars (christen ctxt M) Sub (dom ctxt)
+christen-freeVars ctxt (v x) = index-sub-dom ctxt x
+christen-freeVars ctxt (M app N) =
+  Sub-both-Sub-union
+    (christen-freeVars ctxt M)
+    (christen-freeVars ctxt N)
+christen-freeVars ctxt (lam M) =
+  <:adjoint-delete
+    (List.firstNotIn ctxt)
+    (freeVars (christen (List.firstNotIn ctxt ,- ctxt) M))
+    (dom ctxt)
+    (christen-freeVars (List.firstNotIn ctxt ,- ctxt) M)
+
+satanise : {i : Size} -> (ctxt : List Nat) -> (M : Lambda i) -> freeVars M Sub dom ctxt -> Nameless (length ctxt)
+satanise ctxt (v n) sub = v (indexOf (sing-sub-dom-in ctxt n sub))
+satanise ctxt (M app N) sub =
+  satanise ctxt M (Sub-union-SubL (freeVars M) (freeVars N) (dom ctxt) sub)
+  app
+  satanise ctxt N (Sub-union-SubR (freeVars M) (freeVars N) (dom ctxt) sub)
+satanise ctxt (lam x > M) sub = lam (satanise (x ,- ctxt) M (delete-adjoint-<: x (freeVars M) (dom ctxt) (freeVars-Can M) sub))
