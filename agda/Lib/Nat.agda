@@ -124,6 +124,45 @@ FinEq (n , _) (m , _) = n == m
 <=-refl {zero} = ozero
 <=-refl {suc n} = osuc <=-refl
 
+max : (n m : Nat) -> Nat
+max zero m = m
+max n zero = n
+max (suc n) (suc m) = suc (max n m)
+
+max-right-zero : (n : Nat) -> max n 0 == n
+max-right-zero zero = refl
+max-right-zero (suc n) = refl
+
+max-monoR-<= : (n m : Nat) -> n <= max n m
+max-monoR-<= zero m = ozero
+max-monoR-<= n zero rewrite max-right-zero n = <=-refl
+max-monoR-<= (suc n) (suc m) = osuc (max-monoR-<= n m)
+
+max-comm : (n m : Nat) -> max n m == max m n
+max-comm zero zero = refl
+max-comm zero (suc m) = refl
+max-comm (suc n) zero = refl
+max-comm (suc n) (suc m) rewrite max-comm n m = refl
+
+max-monoL-<= : (n m : Nat) -> n <= max m n
+max-monoL-<= n m rewrite max-comm m n = max-monoR-<= n m
+
+max-either : (n m : Nat) -> max n m == n + max n m == m
+max-either zero zero = inl refl
+max-either zero (suc m) = inr refl
+max-either (suc n) zero = inl refl
+max-either (suc n) (suc m) with max-either n m
+... | inl x = inl (ap suc x)
+... | inr x = inr (ap suc x)
+
+max-returns-larger : (n m : Nat) -> n <= max n m * m <= max n m
+max-returns-larger zero zero = ozero , ozero
+max-returns-larger zero (suc m) = ozero , (osuc <=-refl)
+max-returns-larger (suc n) zero = osuc <=-refl , ozero
+max-returns-larger (suc n) (suc m) =
+  let n<=maxnm , m<=maxnm = max-returns-larger n m
+   in osuc n<=maxnm , osuc m<=maxnm
+
 ==-implies-<= : {n m : Nat} -> n == m -> n <= m
 ==-implies-<= refl = <=-refl
 
