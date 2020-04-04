@@ -8,10 +8,10 @@ open import Lib.Eq
 open import Lib.Zero
 open import Lib.Sum
 
-data Nameless : Nat -> Set where
-  v : {n : Nat} -> Fin n -> Nameless n
-  _app_ : {n : Nat} -> Nameless n -> Nameless n -> Nameless n
-  lam : {n : Nat} -> Nameless (suc n) -> Nameless n
+data Nameless (n : Nat) : Set where
+  v : Fin n -> Nameless n
+  _app_ : Nameless n -> Nameless n -> Nameless n
+  lam : Nameless (suc n) -> Nameless n
 
 infixl 30 _app_
 
