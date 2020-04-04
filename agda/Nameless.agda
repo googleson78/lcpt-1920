@@ -65,7 +65,7 @@ shiftUp d c (x app y) = shiftUp d c x app shiftUp d c y
 shiftUp {n} d c (lam x) = lam (fst (restruct (==-symm (+N-right-suc d n)) (shiftUp d (suc c) x)))
 
 _[_=>_] : {n : Nat} -> Nameless n -> Nat -> Nameless n -> Nameless n
-v (k' , _) [ k => N ] with dec== k k'
+v (k' , _) [ k => N ] with dec k k'
 (v (k' , k'<n) [ k => N ]) | inl _ = v (k' , k'<n)
 (v (k' , _) [ k => N ]) | inr _ = N
 (A app B) [ k => N ] = (A [ k => N ]) app (B [ k => N ])

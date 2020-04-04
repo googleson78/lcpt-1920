@@ -12,6 +12,20 @@ data Nat : Set where
   zero : Nat
   suc : Nat -> Nat
 
+{-# BUILTIN NATURAL Nat #-}
+
+instance
+  EqNat : Eq Nat
+  EqNat = record { dec = dec== }
+    where
+    dec== : (n m : Nat) -> Dec (n == m)
+    dec== zero zero = inr refl
+    dec== zero (suc m) = inl (\ ())
+    dec== (suc n) zero = inl (\ ())
+    dec== (suc n) (suc m) with dec== n m
+    dec== (suc n) (suc m) | inl no = inl \{ refl -> no refl}
+    dec== (suc n) (suc m) | inr yes = inr (ap suc yes)
+
 _+N_ : Nat -> Nat -> Nat
 zero +N m = m
 suc n +N m = suc (n +N m)
@@ -35,8 +49,6 @@ suc-inj refl = refl
 
 suc-inj-/= : {n m : Nat} -> (suc n == suc m -> Zero) -> n == m -> Zero
 suc-inj-/= sucn/=sucm refl = sucn/=sucm refl
-
-{-# BUILTIN NATURAL Nat #-}
 
 data _<=_ : Nat -> Nat -> Set where
   ozero : {n : Nat} -> 0 <= n
@@ -73,16 +85,8 @@ dec<= (suc n) (suc m) with dec<= n m
 dec<= (suc n) (suc m) | inl no = inl \{ (osuc n<=m) -> no n<=m}
 dec<= (suc n) (suc m) | inr yes = inr (osuc yes)
 
-dec== : (n m : Nat) -> Dec (n == m)
-dec== zero zero = inr refl
-dec== zero (suc m) = inl (\ ())
-dec== (suc n) zero = inl (\ ())
-dec== (suc n) (suc m) with dec== n m
-dec== (suc n) (suc m) | inl no = inl \{ refl -> no refl}
-dec== (suc n) (suc m) | inr yes = inr (ap suc yes)
-
 dec< : (n m : Nat) -> Dec (n < m)
-dec< n m with dec== n m
+dec< n m with dec n m
 dec< n .n | inr refl = inl (\ x -> snd x refl)
 dec< n m | inl notEq with dec<= n m
 dec< n m | inl notEq | inl notLeq = inl (\ x -> notLeq (fst x))
