@@ -66,3 +66,27 @@ v n [ k => N ] with dec n k
 ... | ff = lam x > (M [ k => N ])
 ... | tt with firstNotIn (freeVars N)
 ... | x1 = lam x1 > ((M [ x =r> x1 ]) [ k => N ])
+
+infix 25 _=a=_
+data _=a=_ : {i : Size} -> Lambda i -> Lambda i -> Set where
+  a-v : {i : Size} -> {n : Nat} -> v {i} n =a= v {i} n
+  a-app : {i : Size} {M1 N1 M2 N2 : Lambda i} -> M1 =a= M2 -> N1 =a= N2 -> M1 app N1 =a= M2 app N2
+  a-lam : {i : Size} {k : Nat} {M N : Lambda i} -> M =a= N -> (lam k > M) =a= (lam k > N)
+  a-rnm : {i : Size} {p q : Nat} {M M' : Lambda i} -> (So (not (has q (vars M)))) -> (M [ p =r> q ]) =a= M' -> (lam p > M) =a= (lam q > M')
+
+=a=-refl : {i : Size} (M : Lambda i) -> M =a= M
+=a=-refl (v {i} n) = a-v {i}
+=a=-refl (x app x1) = a-app (=a=-refl x) (=a=-refl x1)
+=a=-refl (lam x > x1) = a-lam (=a=-refl x1)
+
+_ : v 0 =a= v 0
+_ = a-v
+
+_ : v 1 app v 2 =a= v 1 app v 2
+_ = a-app a-v a-v
+
+_ : (lam 2 > v 3 app v 2) =a= (lam 1 > v 3 app v 1)
+_ = a-rnm <> (=a=-refl _)
+
+_ : (lam 2 > lam 1 > v 1 app v 2) =a= (lam 3 > lam 4 > v 4 app v 3)
+_ = a-rnm <> (a-rnm <> (=a=-refl _))
