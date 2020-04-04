@@ -95,6 +95,12 @@ dec< n m | inl notEq | inr yesLeq = inr (yesLeq , notEq)
 <-osuc : {n m : Nat} -> n < m -> suc n < suc m
 <-osuc (n<=m , n/=m) = osuc n<=m , \ sucn==sucm -> n/=m (suc-inj sucn==sucm)
 
+<=-rev-osuc : {n m : Nat} -> suc n <= suc m -> n <= m
+<=-rev-osuc (osuc sucn<=sucm) = sucn<=sucm
+
+<-rev-osuc : {n m : Nat} -> suc n < suc m -> n < m
+<-rev-osuc (sucn<=sucm , sucn/=sucm) = <=-rev-osuc sucn<=sucm , suc-inj-/= sucn/=sucm
+
 <=-is-<-or-== : {n m : Nat} -> n <= m -> n < m + n == m
 <=-is-<-or-== {.0} {zero} ozero = inr refl
 <=-is-<-or-== {.0} {suc m} ozero = inl (ozero , (\ ()))
