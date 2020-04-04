@@ -125,31 +125,31 @@ dom-has-in n (x ,- xs) sub with <:-split-Has n (dom xs) x sub
 sing-sub-dom-in : (ctxt : List Nat) (n : Nat) -> [ n ] Sub dom ctxt -> n In ctxt
 sing-sub-dom-in ctxt n sub = dom-has-in n ctxt (sing-Sub-Has n (dom ctxt) sub)
 
-christen : (ctxt : List Nat) -> Nameless (length ctxt) -> Lambda sizeInf
-christen ctxt (v x) = v (index ctxt x)
-christen ctxt (M app N) = christen ctxt M app christen ctxt N
-christen ctxt (lam M) = lam List.firstNotIn ctxt > christen (List.firstNotIn ctxt ,- ctxt) M
+name : (ctxt : List Nat) -> Nameless (length ctxt) -> Lambda sizeInf
+name ctxt (v x) = v (index ctxt x)
+name ctxt (M app N) = name ctxt M app name ctxt N
+name ctxt (lam M) = lam List.firstNotIn ctxt > name (List.firstNotIn ctxt ,- ctxt) M
 
-christen-freeVars : (ctxt : List Nat) -> (M : Nameless (length ctxt)) -> freeVars (christen ctxt M) Sub (dom ctxt)
-christen-freeVars ctxt (v x) = index-sub-dom ctxt x
-christen-freeVars ctxt (M app N) =
+name-freeVars : (ctxt : List Nat) -> (M : Nameless (length ctxt)) -> freeVars (name ctxt M) Sub (dom ctxt)
+name-freeVars ctxt (v x) = index-sub-dom ctxt x
+name-freeVars ctxt (M app N) =
   Sub-both-Sub-union
-    (christen-freeVars ctxt M)
-    (christen-freeVars ctxt N)
-christen-freeVars ctxt (lam M) =
+    (name-freeVars ctxt M)
+    (name-freeVars ctxt N)
+name-freeVars ctxt (lam M) =
   <:adjoint-delete
     (List.firstNotIn ctxt)
-    (freeVars (christen (List.firstNotIn ctxt ,- ctxt) M))
+    (freeVars (name (List.firstNotIn ctxt ,- ctxt) M))
     (dom ctxt)
-    (christen-freeVars (List.firstNotIn ctxt ,- ctxt) M)
+    (name-freeVars (List.firstNotIn ctxt ,- ctxt) M)
 
-satanise : {i : Size} -> (ctxt : List Nat) -> (M : Lambda i) -> freeVars M Sub dom ctxt -> Nameless (length ctxt)
-satanise ctxt (v n) sub = v (indexOf (sing-sub-dom-in ctxt n sub))
-satanise ctxt (M app N) sub =
-  satanise ctxt M (Sub-union-SubL (freeVars M) (freeVars N) (dom ctxt) sub)
+forget : {i : Size} -> (ctxt : List Nat) -> (M : Lambda i) -> freeVars M Sub dom ctxt -> Nameless (length ctxt)
+forget ctxt (v n) sub = v (indexOf (sing-sub-dom-in ctxt n sub))
+forget ctxt (M app N) sub =
+  forget ctxt M (Sub-union-SubL (freeVars M) (freeVars N) (dom ctxt) sub)
   app
-  satanise ctxt N (Sub-union-SubR (freeVars M) (freeVars N) (dom ctxt) sub)
-satanise ctxt (lam x > M) sub = lam (satanise (x ,- ctxt) M (delete-adjoint-<: x (freeVars M) (dom ctxt) (freeVars-Can M) sub))
+  forget ctxt N (Sub-union-SubR (freeVars M) (freeVars N) (dom ctxt) sub)
+forget ctxt (lam x > M) sub = lam (forget (x ,- ctxt) M (delete-adjoint-<: x (freeVars M) (dom ctxt) (freeVars-Can M) sub))
 
 indexOf-sing-sub-dom-in-index-id : (ctxt : List Nat) -> List.NoDup ctxt -> (n : Fin (length ctxt)) -> FinEq n (indexOf (sing-sub-dom-in ctxt (index ctxt n) (index-sub-dom ctxt n)))
 indexOf-sing-sub-dom-in-index-id [] noDup (n , n<0) = naughtE (<-zero-impossible n<0)
@@ -180,25 +180,25 @@ indexOf-sing-sub-dom-in-index-id (x ,- ctxt) noDup (suc n , n<suclen) with
 ... | inl refl with noDup _In_.here (index-In (x ,- ctxt) ((suc n , n<suclen)))
 ... | ()
 
-satanise-christen-id : (ctxt : List Nat) -> List.NoDup ctxt -> (M : Nameless (length ctxt)) -> NamelessEq M (satanise ctxt (christen ctxt M) (christen-freeVars ctxt M))
-satanise-christen-id ctxt noDup (v x) = indexOf-sing-sub-dom-in-index-id ctxt noDup x
-satanise-christen-id ctxt noDup (M app N)
+forget-name-id : (ctxt : List Nat) -> List.NoDup ctxt -> (M : Nameless (length ctxt)) -> NamelessEq M (forget ctxt (name ctxt M) (name-freeVars ctxt M))
+forget-name-id ctxt noDup (v x) = indexOf-sing-sub-dom-in-index-id ctxt noDup x
+forget-name-id ctxt noDup (M app N)
   rewrite
     Sub-unique
-      (Sub-union-SubL (freeVars (christen ctxt M)) (freeVars (christen ctxt N)) (dom ctxt) (Sub-both-Sub-union (christen-freeVars ctxt M) (christen-freeVars ctxt N)))
-      (christen-freeVars ctxt M)
+      (Sub-union-SubL (freeVars (name ctxt M)) (freeVars (name ctxt N)) (dom ctxt) (Sub-both-Sub-union (name-freeVars ctxt M) (name-freeVars ctxt N)))
+      (name-freeVars ctxt M)
   | Sub-unique
-      (Sub-union-SubR (freeVars (christen ctxt M)) (freeVars (christen ctxt N)) (dom ctxt) (Sub-both-Sub-union (christen-freeVars ctxt M) (christen-freeVars ctxt N)))
-      (christen-freeVars ctxt N)
-         = satanise-christen-id ctxt noDup M , satanise-christen-id ctxt noDup N
-satanise-christen-id ctxt noDup (lam M)
+      (Sub-union-SubR (freeVars (name ctxt M)) (freeVars (name ctxt N)) (dom ctxt) (Sub-both-Sub-union (name-freeVars ctxt M) (name-freeVars ctxt N)))
+      (name-freeVars ctxt N)
+         = forget-name-id ctxt noDup M , forget-name-id ctxt noDup N
+forget-name-id ctxt noDup (lam M)
   rewrite
     Sub-unique
       (delete-adjoint-<: (List.firstNotIn ctxt)
-              (freeVars (christen (List.firstNotIn ctxt ,- ctxt) M)) (dom ctxt)
-              (freeVars-Can (christen (List.firstNotIn ctxt ,- ctxt) M))
+              (freeVars (name (List.firstNotIn ctxt ,- ctxt) M)) (dom ctxt)
+              (freeVars-Can (name (List.firstNotIn ctxt ,- ctxt) M))
               (<:adjoint-delete (List.firstNotIn ctxt)
-               (freeVars (christen (List.firstNotIn ctxt ,- ctxt) M)) (dom ctxt)
-               (christen-freeVars (List.firstNotIn ctxt ,- ctxt) M)))
-      (christen-freeVars (List.firstNotIn ctxt ,- ctxt) M)
-        = satanise-christen-id (List.firstNotIn ctxt ,- ctxt) (List.firstNotIn-preserves-NoDup ctxt noDup) M
+               (freeVars (name (List.firstNotIn ctxt ,- ctxt) M)) (dom ctxt)
+               (name-freeVars (List.firstNotIn ctxt ,- ctxt) M)))
+      (name-freeVars (List.firstNotIn ctxt ,- ctxt) M)
+        = forget-name-id (List.firstNotIn ctxt ,- ctxt) (List.firstNotIn-preserves-NoDup ctxt noDup) M
