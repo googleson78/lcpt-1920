@@ -150,3 +150,55 @@ satanise ctxt (M app N) sub =
   app
   satanise ctxt N (Sub-union-SubR (freeVars M) (freeVars N) (dom ctxt) sub)
 satanise ctxt (lam x > M) sub = lam (satanise (x ,- ctxt) M (delete-adjoint-<: x (freeVars M) (dom ctxt) (freeVars-Can M) sub))
+
+indexOf-sing-sub-dom-in-index-id : (ctxt : List Nat) -> List.NoDup ctxt -> (n : Fin (length ctxt)) -> FinEq n (indexOf (sing-sub-dom-in ctxt (index ctxt n) (index-sub-dom ctxt n)))
+indexOf-sing-sub-dom-in-index-id [] noDup (n , n<0) = naughtE (<-zero-impossible n<0)
+indexOf-sing-sub-dom-in-index-id (x ,- ctxt) noDup (zero , n<suclen) rewrite noDup (sing-sub-dom-in (x ,- ctxt) x (sing-sub-add x (dom ctxt))) _In_.here = refl
+indexOf-sing-sub-dom-in-index-id (x ,- ctxt) noDup (suc n , n<suclen) with
+-- look at where inserting n in xs has put us
+  <:-split-Has
+    (index ctxt (n , <-rev-osuc n<suclen))
+    (dom ctxt)
+    x
+    (sing-Sub-Has
+      (index ctxt (n , <-rev-osuc n<suclen))
+      (union [ x ] (dom ctxt))
+      (Sub-trans (index-sub-dom ctxt (n , <-rev-osuc n<suclen)) (add-Sub x (dom ctxt))))
+-- either it's somewhere in xs, and we need to do a recursive step
+... | inr x1
+  rewrite
+    Has-unique
+      x1
+      (sing-Sub-Has
+        (index ctxt (n , <-rev-osuc n<suclen))
+        (dom ctxt)
+        (index-sub-dom ctxt (n , <-rev-osuc n<suclen)))
+    = ap suc (indexOf-sing-sub-dom-in-index-id ctxt (List.NoDup-uncons noDup) (n , <-rev-osuc n<suclen))
+-- or it's at the head of the new xs - but that's impossible, because there are no duplicates in the list
+-- and we know that it's actually somewhere in xs, because when we index with suc n, it's definitely not at the head
+-- information about this comes from index-In, which provides the proof that the result of an index was in the list we indexed
+... | inl refl with noDup _In_.here (index-In (x ,- ctxt) ((suc n , n<suclen)))
+... | ()
+
+satanise-christen-id : (ctxt : List Nat) -> List.NoDup ctxt -> (M : Nameless (length ctxt)) -> NamelessEq M (satanise ctxt (christen ctxt M) (christen-freeVars ctxt M))
+satanise-christen-id ctxt noDup (v x) = indexOf-sing-sub-dom-in-index-id ctxt noDup x
+satanise-christen-id ctxt noDup (M app N)
+  rewrite
+    Sub-unique
+      (Sub-union-SubL (freeVars (christen ctxt M)) (freeVars (christen ctxt N)) (dom ctxt) (Sub-both-Sub-union (christen-freeVars ctxt M) (christen-freeVars ctxt N)))
+      (christen-freeVars ctxt M)
+  | Sub-unique
+      (Sub-union-SubR (freeVars (christen ctxt M)) (freeVars (christen ctxt N)) (dom ctxt) (Sub-both-Sub-union (christen-freeVars ctxt M) (christen-freeVars ctxt N)))
+      (christen-freeVars ctxt N)
+         = satanise-christen-id ctxt noDup M , satanise-christen-id ctxt noDup N
+satanise-christen-id ctxt noDup (lam M)
+  rewrite
+    Sub-unique
+      (delete-adjoint-<: (List.firstNotIn ctxt)
+              (freeVars (christen (List.firstNotIn ctxt ,- ctxt) M)) (dom ctxt)
+              (freeVars-Can (christen (List.firstNotIn ctxt ,- ctxt) M))
+              (<:adjoint-delete (List.firstNotIn ctxt)
+               (freeVars (christen (List.firstNotIn ctxt ,- ctxt) M)) (dom ctxt)
+               (christen-freeVars (List.firstNotIn ctxt ,- ctxt) M)))
+      (christen-freeVars (List.firstNotIn ctxt ,- ctxt) M)
+        = satanise-christen-id (List.firstNotIn ctxt ,- ctxt) (List.firstNotIn-preserves-NoDup ctxt noDup) M
