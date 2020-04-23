@@ -35,7 +35,7 @@ freeVars-Can (M1 app M2) =
   union-preserves-Can
     (freeVars M1) (freeVars M2)
     (freeVars-Can M1) (freeVars-Can M2)
-freeVars-Can (lam x > M) = minus-preserves-Can (freeVars M) [ x ] (freeVars-Can M)
+freeVars-Can (lam x > M) = minus-Can (freeVars M) [ x ]
 
 boundVars : {i : Size} -> Lambda i -> NatSet
 boundVars (v n) = empty 0

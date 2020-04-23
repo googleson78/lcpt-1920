@@ -46,6 +46,52 @@ canonicalise-Can (ff ,- xs)  with canonicalise xs | canonicalise-Can xs
 ... | .[] | [] = []
 ... | _ ,- _ | can1 x = can1 (can1-cons x)
 
+canonicalise-Can-id : (xs : NatSet) -> Can xs -> canonicalise xs == xs
+canonicalise-Can-id [] canxs = refl
+canonicalise-Can-id (tt ,- .[]) (can1 tt[]) = refl
+canonicalise-Can-id (tt ,- xs) (can1 (can1-cons x)) = ap (tt ,-_) (canonicalise-Can-id xs (can1 x))
+canonicalise-Can-id (ff ,- xs) (can1 (can1-cons canxs)) with canonicalise xs | canonicalise-Can-id xs (can1 canxs)
+... | x ,- q | refl = refl
+
+data _Sub_ : NatSet -> NatSet -> Set where
+  sub-[] : {xs : NatSet} -> [] Sub xs
+  sub-cons-im : {x y : Two} {xs ys : NatSet} -> x ==> y -> xs Sub ys -> x ,- xs Sub y ,- ys
+
+Sub-unique : {xs ys : NatSet} (sub1 sub2 : xs Sub ys) -> sub1 == sub2
+Sub-unique sub-[] sub-[] = refl
+Sub-unique (sub-cons-im im1 sub1) (sub-cons-im im2 sub2) rewrite ==>-unique im1 im2 | Sub-unique sub1 sub2 = refl
+
+Sub-[]-impossible : (x : Two) (xs : NatSet) -> x ,- xs Sub [] -> Zero
+Sub-[]-impossible x xs ()
+
+Sub-tt-ff-impossible : {xs ys : NatSet} -> tt ,- xs Sub ff ,- ys -> Zero
+Sub-tt-ff-impossible (sub-cons-im () sub)
+
+Sub-refl : {xs : NatSet} -> xs Sub xs
+Sub-refl {[]} = sub-[]
+Sub-refl {x ,- xs} = sub-cons-im ==>-refl Sub-refl
+
+Sub-trans : {xs ys zs : NatSet} -> xs Sub ys -> ys Sub zs -> xs Sub zs
+Sub-trans sub-[] ysSubzs = sub-[]
+Sub-trans (sub-cons-im im1 xsSubys) (sub-cons-im im2 ysSubzs) = sub-cons-im (==>-trans im1 im2) (Sub-trans xsSubys ysSubzs)
+
+Can1-Sub-[]-impossible : (xs : NatSet) -> Can1 xs -> xs Sub [] -> Zero
+Can1-Sub-[]-impossible .(tt ,- []) tt[] ()
+Can1-Sub-[]-impossible .(_ ,- _) (can1-cons can1xs) ()
+
+Canxs-Sub-[]-==[] : (xs : NatSet) -> Can xs -> xs Sub [] -> xs == []
+Canxs-Sub-[]-==[] [] canxs sub = refl
+
+canonicalise-Sub : (xs : NatSet) -> canonicalise xs Sub xs
+canonicalise-Sub [] = sub-[]
+canonicalise-Sub (tt ,- xs) = sub-cons-im tt (canonicalise-Sub xs)
+canonicalise-Sub (ff ,- xs) with canonicalise xs | canonicalise-Sub xs
+... | [] | sub-[] = sub-[]
+... | x ,- q | sub-cons-im im w = sub-cons-im fx (sub-cons-im im w)
+
+Sub-canonicalise-Sub : (xs ys : NatSet) -> xs Sub ys -> canonicalise xs Sub ys
+Sub-canonicalise-Sub xs ys = Sub-trans (canonicalise-Sub xs)
+
 size : NatSet -> Nat
 size [] = 0
 size (_ ,- xs) = suc (size xs)
@@ -113,31 +159,51 @@ decCoImplies tt ff = inr coim
 decCoImplies _ tt = inl (\ ())
 decCoImplies ff _ = inl (\ ())
 
+coImplies : Two -> Two -> Two
+coImplies ff _ = ff
+coImplies tt ff = tt
+coImplies _ _ = ff
+
+minus' : NatSet -> NatSet -> NatSet
+minus' [] _ = []
+minus' xs [] = xs
+minus' (x ,- xs) (y ,- ys) = coImplies x y ,- minus' xs ys
+
+reifyNotCoImplies : {x y : Two} -> (CoImplies x y -> Zero) -> coImplies x y == ff
+reifyNotCoImplies {ff} {y} nope = refl
+reifyNotCoImplies {tt} {ff} nope = naughtE (nope coim)
+reifyNotCoImplies {tt} {tt} nope = refl
+
+deccoImplies : (x y : Two) -> Dec (coImplies x y == tt)
+deccoImplies ff y = inl (\ ())
+deccoImplies tt ff = inr refl
+deccoImplies tt tt = inl (\ ())
+
+minus'-[]-Sub : (xs : NatSet) -> minus' xs [] Sub xs
+minus'-[]-Sub [] = sub-[]
+minus'-[]-Sub (x ,- xs) = Sub-refl
+
 minus : NatSet -> NatSet -> NatSet
-minus [] _ = []
-minus xs [] = xs
-minus (x ,- xs) (y ,- ys) with decCoImplies x y
-... | inr coim = tt ,- minus xs ys
-... | inl x1 with minus xs ys
-... | [] = []
-... | zs@(_ ,- _) = ff ,- zs
+minus xs ys = canonicalise (minus' xs ys)
 
-minus-[]-[] : (xs : NatSet) -> minus xs [] == xs
-minus-[]-[] [] = refl
-minus-[]-[] (x ,- xs) = refl
+minus'-Sub-minus-Sub : (xs ys zs : NatSet) -> minus' xs ys Sub zs -> minus xs ys Sub zs
+minus'-Sub-minus-Sub xs ys zs = Sub-canonicalise-Sub (minus' xs ys) zs
 
-minus-preserves-Can : (xs ys : NatSet) -> Can xs -> Can (minus xs ys)
-minus-preserves-Can [] _ _ = []
-minus-preserves-Can xs [] canxs rewrite minus-[]-[] xs = canxs
-minus-preserves-Can (.tt ,- .[]) (ff ,- ys) (can1 tt[]) = can1 tt[]
-minus-preserves-Can (.tt ,- .[]) (tt ,- ys) (can1 tt[]) = []
-minus-preserves-Can (x ,- xs) (y ,- ys) (can1 (can1-cons can1xs)) with decCoImplies x y
-... | inl x2 with minus xs ys | minus-preserves-Can xs ys (can1 can1xs)
-... | .[] | [] = []
-... | z ,- zs | can1 can1zs = can1 (can1-cons can1zs)
-minus-preserves-Can (x ,- xs) (y ,- ys) (can1 (can1-cons can1xs)) | inr coim with minus xs ys | minus-preserves-Can xs ys (can1 can1xs)
-... | .[] | [] = can1 tt[]
-... | zs | can1 can1zs = can1 (can1-cons can1zs)
+minus-minus-[] : (xs : NatSet) -> minus xs xs == []
+minus-minus-[] [] = refl
+minus-minus-[] (ff ,- xs) rewrite minus-minus-[] xs = refl
+minus-minus-[] (tt ,- xs) rewrite minus-minus-[] xs = refl
+
+minus-[]-canonicalise : (xs : NatSet) -> minus xs [] == canonicalise xs
+minus-[]-canonicalise [] = refl
+minus-[]-canonicalise (x ,- xs) = refl
+
+minus-[]-id : (xs : NatSet) -> Can xs -> minus xs [] == xs
+minus-[]-id [] canxs = refl
+minus-[]-id (x ,- xs) canxs = canonicalise-Can-id (x ,- xs) canxs
+
+minus-Can : (xs ys : NatSet) -> Can (minus xs ys)
+minus-Can xs ys = canonicalise-Can (minus' xs ys)
 
 delete : Nat -> NatSet -> NatSet
 delete n m = minus m [ n ]
@@ -155,6 +221,10 @@ dec-has n xs with has n xs
 data _Has_ : NatSet -> Nat -> Set where
   here : {xs : NatSet} -> tt ,- xs Has 0
   there : {b : Two} {n : Nat} {xs : NatSet} -> xs Has n -> b ,- xs Has (suc n)
+
+Has-has : {n : Nat} {xs : NatSet} -> xs Has n -> So (has n xs)
+Has-has here = <>
+Has-has (there xshasn) = Has-has xshasn
 
 Has-unique : {xs : NatSet} {x : Nat} (has1 has2 : xs Has x) -> has1 == has2
 Has-unique here here = refl
@@ -209,36 +279,13 @@ ffxs-Has-0-impossible ()
 ... | inl refl = inl refl
 ... | inr x1 = inr (there x1)
 
-data _Sub_ : NatSet -> NatSet -> Set where
-  sub-[] : {xs : NatSet} -> [] Sub xs
-  sub-cons-im : {x y : Two} {xs ys : NatSet} -> x ==> y -> xs Sub ys -> x ,- xs Sub y ,- ys
-
-Sub-unique : {xs ys : NatSet} (sub1 sub2 : xs Sub ys) -> sub1 == sub2
-Sub-unique sub-[] sub-[] = refl
-Sub-unique (sub-cons-im im1 sub1) (sub-cons-im im2 sub2) rewrite ==>-unique im1 im2 | Sub-unique sub1 sub2 = refl
-
-Sub-[]-impossible : (x : Two) (xs : NatSet) -> x ,- xs Sub [] -> Zero
-Sub-[]-impossible x xs ()
-
-Can1-Sub-[]-impossible : (xs : NatSet) -> Can1 xs -> xs Sub [] -> Zero
-Can1-Sub-[]-impossible .(tt ,- []) tt[] ()
-Can1-Sub-[]-impossible .(_ ,- _) (can1-cons can1xs) ()
-
-Sub-tt-ff-impossible : {xs ys : NatSet} -> tt ,- xs Sub ff ,- ys -> Zero
-Sub-tt-ff-impossible (sub-cons-im () sub)
-
-Sub-refl : {xs : NatSet} -> xs Sub xs
-Sub-refl {[]} = sub-[]
-Sub-refl {x ,- xs} = sub-cons-im ==>-refl Sub-refl
-
-Sub-trans : {xs ys zs : NatSet} -> xs Sub ys -> ys Sub zs -> xs Sub zs
-Sub-trans sub-[] ysSubzs = sub-[]
-Sub-trans (sub-cons-im im1 xsSubys) (sub-cons-im im2 ysSubzs) = sub-cons-im (==>-trans im1 im2) (Sub-trans xsSubys ysSubzs)
-
 union-monoL-Sub : (xs ys : NatSet) -> ys Sub union xs ys
 union-monoL-Sub [] ys = Sub-refl
 union-monoL-Sub (x ,- xs) [] = sub-[]
 union-monoL-Sub (x ,- xs) (y ,- ys) = sub-cons-im (||-monoL-==> x y) (union-monoL-Sub xs ys)
+
+union-monoR-Sub : (xs ys : NatSet) -> xs Sub union xs ys
+union-monoR-Sub xs ys rewrite union-commut xs ys = union-monoL-Sub ys xs
 
 Sub-both-Sub-union : {xs ys zs : NatSet} -> xs Sub zs -> ys Sub zs -> union xs ys Sub zs
 Sub-both-Sub-union sub-[] ysSubzs = ysSubzs
@@ -253,13 +300,11 @@ Sub-union-SubL (x ,- xs) (y ,- ys) (z ,- zs) (sub-cons-im im sub) = sub-cons-im 
 Sub-union-SubR : (xs ys zs : NatSet) -> union xs ys Sub zs -> ys Sub zs
 Sub-union-SubR xs ys rewrite union-commut xs ys = Sub-union-SubL ys xs
 
-Sub-minus-Sub-[] : (xs ys : NatSet) -> xs Sub ys -> minus xs ys Sub []
-Sub-minus-Sub-[] [] ys xsSubys = sub-[]
-Sub-minus-Sub-[] xs [] xsSubys rewrite minus-[]-[] xs = xsSubys
-Sub-minus-Sub-[] (x ,- xs) (y ,- ys) (sub-cons-im x1 xsSubys) with decCoImplies x y
-Sub-minus-Sub-[] (.tt ,- xs) (.ff ,- ys) (sub-cons-im () xsSubys) | inr coim
-... | inl x2 with minus xs ys | Sub-minus-Sub-[] xs ys xsSubys
-... | .[] | sub-[] = sub-[]
+Sub-minus-[] : (xs ys : NatSet) -> xs Sub ys -> minus xs ys == []
+Sub-minus-[] [] ys xsSubys = refl
+Sub-minus-[] (.ff ,- xs) (y ,- ys) (sub-cons-im fx xsSubys) rewrite Sub-minus-[] xs ys xsSubys = refl
+Sub-minus-[] (.tt ,- xs) (.tt ,- ys) (sub-cons-im tt xsSubys) rewrite Sub-minus-[] xs ys xsSubys = refl
+
 
 firstNotIn : NatSet -> Nat
 firstNotIn [] = zero
@@ -306,93 +351,102 @@ all-Has-Sub (x ,- xs) (y ,- ys) (can1 (can1-cons can1xs)) hasall with decCoImpli
 ... | sub-cons-im im z = sub-cons-im (not-CoImplies-Implies notcoim) (sub-cons-im im z)
 
 union-adjoint-minus : (xs ys zs : NatSet) -> xs Sub union ys zs -> minus xs ys Sub zs
-union-adjoint-minus xs ys [] xsSubunionyszs rewrite union-right-zero ys = Sub-minus-Sub-[] xs ys xsSubunionyszs
-union-adjoint-minus [] ys zs xsSubunionyszs = sub-[]
-union-adjoint-minus (x ,- xs) [] zs xsSubunionyszs = xsSubunionyszs
-union-adjoint-minus (x ,- xs) (y ,- ys) (z ,- zs) (sub-cons-im im xsSubunionyszs) with decCoImplies x y
-union-adjoint-minus (.tt ,- xs) (.ff ,- ys) (tt ,- zs) (sub-cons-im im xsSubunionyszs) | inr coim = sub-cons-im im (union-adjoint-minus xs ys zs xsSubunionyszs)
-... | inl x1 with minus xs ys | union-adjoint-minus xs ys zs xsSubunionyszs
-... | [] | rec = sub-[]
-... | z' ,- zs' | rec = sub-cons-im fx rec
-
-Canxs-Sub-[]-==[] : (xs : NatSet) -> Can xs -> xs Sub [] -> xs == []
-Canxs-Sub-[]-==[] .[] [] sub-[] = refl
+union-adjoint-minus [] ys zs sub = sub-[]
+union-adjoint-minus xs [] zs sub = Sub-trans (minus'-Sub-minus-Sub xs [] xs (minus'-[]-Sub xs)) sub
+union-adjoint-minus xs ys [] sub rewrite union-right-zero ys | Sub-minus-[] xs ys sub = sub-[]
+union-adjoint-minus (x ,- xs) (y ,- ys) (z ,- zs) (sub-cons-im im sub) with decCoImplies x y
+union-adjoint-minus (.tt ,- xs) (.ff ,- ys) (tt ,- zs) (sub-cons-im tt sub) | inr coim = sub-cons-im tt (union-adjoint-minus xs ys zs sub)
+... | inl no rewrite reifyNotCoImplies no with canonicalise (minus' xs ys) | union-adjoint-minus xs ys zs sub
+... | [] | sub-[] = sub-[]
+... | _ ,- _ | rec = sub-cons-im fx rec
 
 decSub : (xs ys : NatSet) -> Can xs -> Can1 (minus xs ys) + xs Sub ys
 decSub [] ys canxs = inr sub-[]
-decSub xs [] (can1 can1xs) rewrite minus-[]-[] xs = inl can1xs
+decSub xs [] (can1 can1xs) rewrite minus-[]-id xs (can1 can1xs) = inl can1xs
 decSub (.tt ,- .[]) (ff ,- ys) (can1 tt[]) = inl tt[]
 decSub (.tt ,- .[]) (tt ,- ys) (can1 tt[]) = inr (sub-cons-im tt sub-[])
 decSub (x ,- xs) (y ,- ys) (can1 (can1-cons can1xs)) with decCoImplies x y | decSub xs ys (can1 can1xs)
 ... | inr coim | inl nosub = inl (can1-cons nosub)
-... | inr coim | inr yessub
-                 rewrite Canxs-Sub-[]-==[]
-                           (minus xs ys)
-                           (minus-preserves-Can xs ys (can1 can1xs))
-                           (Sub-minus-Sub-[] xs ys yessub)
-                 = inl tt[]
+... | inr coim | inr yessub rewrite Sub-minus-[] xs ys yessub = inl tt[]
 ... | inl nocoim | inr xsSubys = inr (sub-cons-im (not-CoImplies-Implies nocoim) xsSubys)
-... | inl nocoim | inl can1zzs with minus xs ys
+... | inl nocoim | inl can1zzs rewrite reifyNotCoImplies nocoim with minus xs ys
 ... | z ,- zs = inl (can1-cons can1zzs)
 
 minus-Sub-[]-Sub : (xs ys : NatSet) -> Can xs -> minus xs ys Sub [] -> xs Sub ys
 minus-Sub-[]-Sub xs ys canxs sub with decSub xs ys canxs
 ... | inr yes = yes
-... | inl canzs rewrite Canxs-Sub-[]-==[] (minus xs ys) (minus-preserves-Can xs ys canxs) sub
+... | inl canzs rewrite Canxs-Sub-[]-==[] (minus xs ys) (minus-Can xs ys) sub
   = naughtE (Can1-[]-impossible canzs)
 
--- ;_;
--- the last cases are copy and pasted (some of them literally..)
+canonicalise-can-id : (xs : NatSet) -> Can xs -> canonicalise xs == xs
+canonicalise-can-id [] [] = refl
+canonicalise-can-id (.tt ,- .[]) (can1 tt[]) = refl
+canonicalise-can-id (tt ,- xs) (can1 (can1-cons canxs)) = ap (tt ,-_) (canonicalise-can-id xs (can1 canxs))
+canonicalise-can-id (ff ,- xs) (can1 (can1-cons canxs)) with canonicalise xs | canonicalise-can-id xs (can1 canxs)
+... | [] | refl = naughtE (Can1-[]-impossible canxs)
+... | x ,- z | refl = refl
+
+canonicalise-idemp : (xs : NatSet) -> canonicalise (canonicalise xs) == canonicalise xs
+canonicalise-idemp [] = refl
+canonicalise-idemp (tt ,- xs) = ap (tt ,-_) (canonicalise-idemp xs)
+canonicalise-idemp (ff ,- xs) with canonicalise xs | canonicalise-Can xs
+... | [] | w = refl
+... | x ,- z | canxz rewrite canonicalise-can-id (x ,- z) canxz = refl
+
+minus-canonicalise-[]-minus-[] : (xs : NatSet) -> minus (canonicalise xs) [] == minus xs []
+minus-canonicalise-[]-minus-[] [] = refl
+minus-canonicalise-[]-minus-[] (tt ,- xs) rewrite canonicalise-idemp xs = refl
+minus-canonicalise-[]-minus-[] (ff ,- xs) with canonicalise xs | canonicalise-Can xs
+... | [] | w = refl
+... | x ,- q | canxq rewrite canonicalise-can-id (x ,- q) canxq = refl
+
+minus-cons : (p q : Two) (xs ys zs us : NatSet) -> minus xs ys == minus zs us -> minus (p ,- xs) (q ,- ys) == minus (p ,- zs) (q ,- us)
+minus-cons p q xs ys zs us eq with decCoImplies p q
+... | inr coim = ap (tt ,-_) eq
+... | inl nocoim rewrite reifyNotCoImplies nocoim | eq with canonicalise (minus' zs us)
+... | [] = refl
+... | w ,- ws = refl
+
+minus-canonicalise-eq-minus : (xs ys : NatSet) -> minus (canonicalise xs) ys == minus xs ys
+minus-canonicalise-eq-minus [] ys = refl
+minus-canonicalise-eq-minus xs [] = minus-canonicalise-[]-minus-[] xs
+minus-canonicalise-eq-minus (tt ,- xs) (ff ,- ys) = ap (tt ,-_) (minus-canonicalise-eq-minus xs ys)
+minus-canonicalise-eq-minus (tt ,- xs) (tt ,- ys) = minus-cons ff ff (canonicalise xs) ys xs ys (minus-canonicalise-eq-minus xs ys)
+minus-canonicalise-eq-minus (ff ,- xs) (y ,- ys) with canonicalise xs | minus xs ys | minus-canonicalise-eq-minus xs ys
+... | [] | [] | refl = refl
+... | x ,- q | [] | r rewrite r = refl
+... | x ,- q | x1 ,- w | r rewrite r = refl
+
+minus-[]-idemp : (xs ys : NatSet) -> minus' (minus' xs []) ys == minus' xs ys
+minus-[]-idemp [] ys = refl
+minus-[]-idemp (x ,- xs) [] = refl
+minus-[]-idemp (x ,- xs) (y ,- ys) = refl
+
+double-minus-[]-eq : (xs ys : NatSet) -> minus xs ys == minus (minus xs []) ys
+double-minus-[]-eq xs ys rewrite minus-canonicalise-eq-minus (minus' xs []) ys | minus-[]-idemp xs ys = refl
+
 minus-minus-minus-union : (xs ys zs : NatSet) -> minus xs (union ys zs) == minus (minus xs ys) zs
 minus-minus-minus-union [] ys zs = refl
-minus-minus-minus-union xs [] zs rewrite minus-[]-[] xs = refl
-minus-minus-minus-union xs ys [] rewrite minus-[]-[] (minus xs ys) | union-right-zero ys = refl
+minus-minus-minus-union xs [] zs = double-minus-[]-eq xs zs
+minus-minus-minus-union xs ys [] rewrite union-right-zero ys = ==-symm (minus-[]-id (minus xs ys) (minus-Can xs ys))
 minus-minus-minus-union (tt ,- xs) (ff ,- ys) (ff ,- zs) = ap (tt ,-_) (minus-minus-minus-union xs ys zs)
-minus-minus-minus-union (tt ,- xs) (ff ,- ys) (tt ,- zs) rewrite minus-minus-minus-union xs ys zs with minus xs (union ys zs)
+minus-minus-minus-union (tt ,- xs) (ff ,- ys) (tt ,- zs) rewrite (minus-minus-minus-union xs ys zs) with minus (minus xs ys) zs
 ... | [] = refl
-... | x ,- w = refl
-minus-minus-minus-union (ff ,- xs) (ff ,- ys) (ff ,- zs) with minus xs (union ys zs) | minus xs ys | minus-minus-minus-union xs ys zs
-... | [] | [] | rec = refl
-... | [] | x ,- w | rec with minus (x ,- w) zs
+... | x ,- q = refl
+minus-minus-minus-union (ff ,- xs) (y ,- ys) (z ,- zs) with minus xs ys | minus-minus-minus-union xs ys zs
+... | [] | r rewrite r = refl
+... | x ,- q | r rewrite r = refl
+minus-minus-minus-union (tt ,- xs) (tt ,- ys) (z ,- zs) with minus xs ys | minus-minus-minus-union xs ys zs
+... | [] | r rewrite r = refl
+... | x ,- q | r rewrite r with minus (x ,- q) zs
 ... | [] = refl
-minus-minus-minus-union (ff ,- xs) (ff ,- ys) (ff ,- zs) | x ,- q | x1 ,- w | rec with minus (x1 ,- w) zs
-minus-minus-minus-union (ff ,- xs) (ff ,- ys) (ff ,- zs) | .x2 ,- .e | x1 ,- w | refl | x2 ,- e = refl
-minus-minus-minus-union (ff ,- xs) (ff ,- ys) (tt ,- zs) with minus xs (union ys zs) | minus xs ys | minus-minus-minus-union xs ys zs
-... | [] | [] | rec = refl
-... | [] | x ,- w | rec with minus (x ,- w) zs
-... | [] = refl
-minus-minus-minus-union (ff ,- xs) (ff ,- ys) (tt ,- zs) | x ,- q | x1 ,- w | rec with minus (x1 ,- w) zs
-minus-minus-minus-union (ff ,- xs) (ff ,- ys) (tt ,- zs) | .x2 ,- .e | x1 ,- w | refl | x2 ,- e = refl
-minus-minus-minus-union (ff ,- xs) (tt ,- ys) (ff ,- zs) with minus xs (union ys zs) | minus xs ys | minus-minus-minus-union xs ys zs
-... | [] | [] | rec = refl
-... | [] | x ,- w | rec with minus (x ,- w) zs
-... | [] = refl
-minus-minus-minus-union (ff ,- xs) (tt ,- ys) (ff ,- zs) | x ,- q | x1 ,- w | rec with minus (x1 ,- w) zs
-minus-minus-minus-union (ff ,- xs) (tt ,- ys) (ff ,- zs) | .x2 ,- .lol | x1 ,- w | refl | x2 ,- lol = refl
-minus-minus-minus-union (ff ,- xs) (tt ,- ys) (tt ,- zs) with minus xs (union ys zs) | minus xs ys | minus-minus-minus-union xs ys zs
-... | [] | [] | rec = refl
-... | [] | x ,- w | rec with minus (x ,- w) zs
-... | [] = refl
-minus-minus-minus-union (ff ,- xs) (tt ,- ys) (tt ,- zs) | x ,- q | x1 ,- w | rec with minus (x1 ,- w) zs
-minus-minus-minus-union (ff ,- xs) (tt ,- ys) (tt ,- zs) | .x2 ,- .lol | x1 ,- w | refl | x2 ,- lol = refl
-minus-minus-minus-union (tt ,- xs) (tt ,- ys) (ff ,- zs) with minus xs (union ys zs) | minus xs ys | minus-minus-minus-union xs ys zs
-... | [] | [] | rec = refl
-... | [] | x ,- w | rec with minus (x ,- w) zs
-... | [] = refl
-minus-minus-minus-union (tt ,- xs) (tt ,- ys) (ff ,- zs) | x ,- q | x1 ,- w | rec with minus (x1 ,- w) zs
-minus-minus-minus-union (tt ,- xs) (tt ,- ys) (ff ,- zs) | .x2 ,- .lol | x1 ,- w | refl | x2 ,- lol = refl
-minus-minus-minus-union (tt ,- xs) (tt ,- ys) (tt ,- zs) with minus xs (union ys zs) | minus xs ys | minus-minus-minus-union xs ys zs
-... | [] | [] | rec = refl
-... | [] | x ,- w | rec with minus (x ,- w) zs
-... | [] = refl
-minus-minus-minus-union (tt ,- xs) (tt ,- ys) (tt ,- zs) | x ,- q | x1 ,- w | rec with minus (x1 ,- w) zs
-minus-minus-minus-union (tt ,- xs) (tt ,- ys) (tt ,- zs) | .x2 ,- .lol | x1 ,- w | refl | x2 ,- lol = refl
+... | w ,- ws = refl
 
 minus-adjoint-union : (xs ys zs : NatSet) -> Can xs -> minus xs ys Sub zs -> xs Sub union ys zs
 minus-adjoint-union xs ys zs canxs sub with decSub xs (union ys zs) canxs
 ... | inr x = x
-... | inl x rewrite minus-minus-minus-union xs ys zs
-  = naughtE (Can1-Sub-[]-impossible (minus (minus xs ys) zs) x (Sub-minus-Sub-[] (minus xs ys) zs sub))
+... | inl x rewrite minus-minus-minus-union xs ys zs rewrite Sub-minus-[] (minus xs ys) zs sub
+  = naughtE (Can1-Sub-[]-impossible [] x sub-[])
 
 Has-Sub-trans : (x : Nat) (xs ys : NatSet) -> xs Has x -> xs Sub ys -> ys Has x
 Has-Sub-trans .0 .(tt ,- _) .(tt ,- _) here (sub-cons-im tt xsSubys) = here
@@ -401,16 +455,21 @@ Has-Sub-trans (suc n) (_ ,- xs) (_ ,- ys) (there xsHasx) (sub-cons-im x xsSubys)
 noHasSuc : (y : Two) (ys : NatSet) (n : Nat) -> ((y ,- ys) Has suc n -> Zero) -> ys Has n -> Zero
 noHasSuc y ys n nohassuc has = nohassuc (there has)
 
-minus-no-has-has : (n : Nat) (xs ys : NatSet) -> xs Has n -> (ys Has n -> Zero) -> minus xs ys Has n
-minus-no-has-has n (x ,- xs) [] xshas ysnohas = xshas
-minus-no-has-has .0 (.tt ,- xs) (ff ,- ys) here ysnohas with minus xs ys
-... | [] = here
-... | x ,- z = here
-minus-no-has-has .0 (.tt ,- xs) (tt ,- ys) here ysnohas = naughtE (ysnohas here)
-minus-no-has-has (suc n) (x ,- xs) (y ,- ys) (there xshas) ysnohas with decCoImplies x y
-... | inr coim = there (minus-no-has-has n xs ys xshas (noHasSuc ff ys n ysnohas))
-... | inl nocoim with minus xs ys | minus-no-has-has n xs ys xshas (noHasSuc y ys n ysnohas)
-... | x1 ,- q | rec = there rec
+minus'-Has : {n : Nat} (xs ys : NatSet) -> xs Has n -> (ys Has n -> Zero) -> minus' xs ys Has n
+minus'-Has (x ,- xs) [] xsHasn noysHasn = xsHasn
+minus'-Has (.tt ,- xs) (ff ,- ys) here noysHasn = here
+minus'-Has (.tt ,- xs) (tt ,- ys) here noysHasn = naughtE (noysHasn here)
+minus'-Has (x ,- xs) (y ,- ys) (there xsHasn) noysHasn = there (minus'-Has xs ys xsHasn (\ z -> noysHasn (there z)))
+
+canonicalise-preserves-Has : {n : Nat} -> (xs : NatSet) -> xs Has n -> canonicalise xs Has n
+canonicalise-preserves-Has (.tt ,- xs) here = here
+canonicalise-preserves-Has (tt ,- xs) (there xsHasn) = there (canonicalise-preserves-Has xs xsHasn)
+canonicalise-preserves-Has (ff ,- xs) (there xsHasn) with canonicalise xs | canonicalise-preserves-Has xs xsHasn
+... | x ,- q | r = there r
+
+minus-Has : {n : Nat} (xs ys : NatSet) -> xs Has n -> (ys Has n -> Zero) -> minus xs ys Has n
+minus-Has xs ys xsHasn noysHasn = canonicalise-preserves-Has (minus' xs ys) (minus'-Has xs ys xsHasn noysHasn)
+
 
 delete-adjoint-<: : (n : Nat) (xs ys : NatSet) -> Can xs -> delete n xs Sub ys -> xs Sub n <: ys
 delete-adjoint-<: n xs ys = minus-adjoint-union xs [ n ] ys
