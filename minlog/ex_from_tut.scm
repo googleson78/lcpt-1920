@@ -1,0 +1,73 @@
+(add-pvar-name "A" "B" "C" (make-arity))
+
+
+(set-goal "(A -> B -> C) -> (A -> B) -> A -> C")
+(assume "f" "g" "x")
+(use "f")
+(use "x")
+(use-with "g" "x")
+
+(set-goal "A & B -> B & A")
+(assume "f")
+(split)
+(use "f")
+(use "f")
+
+(set-goal "(A -> B -> C) -> A & B -> C")
+(assume "f" "xandy")
+(use "f")
+(use "xandy")
+(use "xandy")
+
+(set-goal "((A -> B) -> A) -> A")
+(assume "f")
+(use "StabLog")
+(assume "notA")
+(use "notA")
+(use "f")
+(assume "x")
+(use "EfqLog")
+(use-with "notA" "x")
+
+(set-goal "(A -> B) -> not B -> not A")
+(assume "f" "notB" "x")
+(use "notB")
+(use-with "f" "x")
+
+(set-goal "not (A -> B) -> not B")
+(assume "f" "y")
+(use "f")
+(assume "_")
+(use "y")
+
+(set-goal "not (not (A -> B)) -> not (not A) -> not (not B)")
+(assume "f" "notnotA" "notB")
+(use "f")
+(assume "g")
+(use "notnotA")
+(assume "x")
+(use "notB")
+(use "g")
+(use "x")
+
+(set! COMMENT-FLAG #f)
+(libload "nat.scm")
+(set! COMMENT-FLAG #t)
+
+(add-pvar-name "P" "Q" (make-arity (py "nat")))
+
+
+(set-goal "all n (P n -> Q n) -> all n P n -> all n Q n")
+(assume "f" "g")
+(assume "n")
+(use "f")
+(use "g")
+
+(set-goal "all n (P n -> Q n) -> ex n P n -> ex n Q n")
+(assume "f" "nP")
+(ex-elim "nP")
+(assume "n")
+(assume "Pn")
+(ex-intro (pt "n"))
+(use "f")
+(use "Pn")
